@@ -16,6 +16,7 @@ nvidia = ProviderProfile(
     ),
     base_url="https://integrate.api.nvidia.com/v1",
     default_max_tokens=16384,
+    rate_limit_rpm=40,
 )
 
 register_provider(nvidia)

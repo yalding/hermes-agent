@@ -4331,6 +4331,16 @@ def call_llm(
 
     effective_timeout = timeout if timeout is not None else _get_task_timeout(task)
 
+    # Pacing for rate limiting
+    try:
+        from providers import get_provider_profile
+        profile = get_provider_profile(resolved_provider)
+        if profile and profile.rate_limit_rpm > 0:
+            from agent.rate_limit_guard import RateLimitGuard
+            RateLimitGuard(f"{resolved_provider}:{final_model}", profile.rate_limit_rpm).acquire()
+    except Exception:
+        pass
+
     # Log what we're about to do — makes auxiliary operations visible
     _base_info = str(getattr(client, "base_url", resolved_base_url) or "")
     if task:
@@ -4694,6 +4704,16 @@ async def async_call_llm(
                 f"Run: hermes setup")
 
     effective_timeout = timeout if timeout is not None else _get_task_timeout(task)
+
+    # Pacing for rate limiting
+    try:
+        from providers import get_provider_profile
+        profile = get_provider_profile(resolved_provider)
+        if profile and profile.rate_limit_rpm > 0:
+            from agent.rate_limit_guard import RateLimitGuard
+            await RateLimitGuard(f"{resolved_provider}:{final_model}", profile.rate_limit_rpm).async_acquire()
+    except Exception:
+        pass
 
     # Pass the client's actual base_url (not just resolved_base_url) so
     # endpoint-specific temperature overrides can distinguish

@@ -77,6 +77,8 @@ class ProviderProfile:
     )
     # empty = use main model
 
+    rate_limit_rpm: int = 0
+
     # ── Hooks (override in subclass for complex providers) ───
 
     def get_hostname(self) -> str:

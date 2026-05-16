@@ -7753,6 +7753,16 @@ class AIAgent:
         the main retry loop can try again with backoff / credential rotation /
         provider fallback.
         """
+        # Pacing for rate limiting
+        try:
+            from providers import get_provider_profile
+            profile = get_provider_profile(self.provider)
+            if profile and profile.rate_limit_rpm > 0:
+                from agent.rate_limit_guard import RateLimitGuard
+                RateLimitGuard(f"{self.provider}:{self.model}", profile.rate_limit_rpm).acquire()
+        except Exception as e:
+            logger.debug("Rate limit guard error in _interruptible_api_call: %s", e)
+
         result = {"response": None, "error": None}
         request_client_holder = {"client": None}
 
@@ -8077,6 +8087,17 @@ class AIAgent:
         """
         if self._interrupt_requested:
             raise InterruptedError("Agent interrupted before streaming API call")
+
+        # Pacing for rate limiting (skip if codex_responses because it delegates to _interruptible_api_call)
+        if self.api_mode != "codex_responses":
+            try:
+                from providers import get_provider_profile
+                profile = get_provider_profile(self.provider)
+                if profile and profile.rate_limit_rpm > 0:
+                    from agent.rate_limit_guard import RateLimitGuard
+                    RateLimitGuard(f"{self.provider}:{self.model}", profile.rate_limit_rpm).acquire()
+            except Exception as e:
+                logger.debug("Rate limit guard error in _interruptible_streaming_api_call: %s", e)
 
         if self.api_mode == "codex_responses":
             # Codex streams internally via _run_codex_stream. The main dispatch
